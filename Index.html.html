@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Note Trainer 3.0</title>
+<style>
+body {font-family: Arial, sans-serif; background: #f3f4f6; text-align: center; padding: 10px;}
+.card {background: white; max-width: 700px; margin: auto; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.15);}
+button {padding: 10px 14px; margin: 4px; font-size: 18px; border-radius: 8px; cursor: pointer;}
+button:hover {background-color: #e2e8f0;}
+.good {color: green; font-weight: bold;}
+.bad {color: red; font-weight: bold;}
+select {font-size: 16px; padding: 6px;}
+</style>
+</head>
+<body>
+<div class="card">
+<h2>🎼 Luyện Nhớ Nốt Nhạc</h2>
+
+<select id="mode" onchange="newQuestion()">
+<option value="treble">Khóa Sol</option>
+<option value="bass">Khóa Fa</option>
+<option value="mix">Sol + Fa</option>
+</select>
+
+<p>✅ Đúng: <span id="correct">0</span> |
+❌ Sai: <span id="wrong">0</span></p>
+
+<svg viewBox="0 -10 420 240" style="width:100%;max-width:500px">
+<line x1="50" y1="50" x2="370" y2="50" stroke="black" stroke-width="2"/>
+<line x1="50" y1="75" x2="370" y2="75" stroke="black" stroke-width="2"/>
+<line x1="50" y1="100" x2="370" y2="100" stroke="black" stroke-width="2"/>
+<line x1="50" y1="125" x2="370" y2="125" stroke="black" stroke-width="2"/>
+<line x1="50" y1="150" x2="370" y2="150" stroke="black" stroke-width="2"/>
+<text id="clef" x="65" y="125" font-size="80">𝄞</text>
+
+<g id="ledgers"></g>
+
+<ellipse id="note" cx="250" cy="100" rx="12" ry="9" fill="black"/>
+</svg>
+
+<div>
+<button onclick="checkAns('Đô')">Đô</button>
+<button onclick="checkAns('Rê')">Rê</button>
+<button onclick="checkAns('Mi')">Mi</button>
+<button onclick="checkAns('Fa')">Fa</button><br>
+<button onclick="checkAns('Son')">Son</button>
+<button onclick="checkAns('La')">La</button>
+<button onclick="checkAns('Si')">Si</button>
+</div>
+
+<h3 id="result"></h3>
+</div>
+
+<script>
+const treble = [
+  {name:'La', y:25}, {name:'Son', y:37.5}, 
+  {name:'Fa', y:50}, {name:'Mi', y:62.5}, {name:'Rê', y:75}, 
+  {name:'Đô', y:87.5}, {name:'Si', y:100}, {name:'La', y:112.5}, 
+  {name:'Son', y:125}, {name:'Fa', y:137.5}, {name:'Mi', y:150},
+  {name:'Rê', y:162.5}, {name:'Đô', y:175}, {name:'Si', y:187.5}, {name:'La', y:200} 
+];
+
+const bass = [
+  {name:'Đô', y:25}, {name:'Si', y:37.5}, 
+  {name:'La', y:50}, {name:'Son', y:62.5}, {name:'Fa', y:75}, 
+  {name:'Mi', y:87.5}, {name:'Rê', y:100}, {name:'Đô', y:112.5}, 
+  {name:'Si', y:125}, {name:'La', y:137.5}, {name:'Son', y:150},
+  {name:'Fa', y:162.5}, {name:'Mi', y:175}, {name:'Rê', y:187.5}, {name:'Đô', y:200} 
+];
+
+let current;
+let correct = 0;
+let wrong = 0;
+
+function beep(freq){
+ const ctx = new(window.AudioContext||window.webkitAudioContext)();
+ const osc = ctx.createOscillator();
+ osc.frequency.value = freq;
+ osc.connect(ctx.destination);
+ osc.start();
+ osc.stop(ctx.currentTime + 0.15);
+}
+
+function newQuestion(){
+ let mode = document.getElementById("mode").value;
+ let arr;
+
+ if(mode === "treble"){
+   arr = treble;
+   document.getElementById("clef").textContent = "𝄞";
+ }else if(mode === "bass"){
+   arr = bass;
+   document.getElementById("clef").textContent = "𝄢";
+ }else{
+   if(Math.random() > 0.5){
+      arr = treble;
+      document.getElementById("clef").textContent = "𝄞";
+   }else{
+      arr = bass;
+      document.getElementById("clef").textContent = "𝄢";
+   }
+ }
+
+ current = arr[Math.floor(Math.random() * arr.length)];
+ document.getElementById("note").setAttribute("cy", current.y);
+ document.getElementById("result").innerHTML = "";
+ 
+ let ledgers = document.getElementById("ledgers");
+ ledgers.innerHTML = ""; 
+ let noteX = 250;
+ let ledgerWidth = 22; 
+ 
+ for (let y = 175; y <= current.y + 1; y += 25) {
+   ledgers.innerHTML += `<line x1="${noteX - ledgerWidth}" y1="${y}" x2="${noteX + ledgerWidth}" y2="${y}" stroke="black" stroke-width="2"/>`;
+ }
+ 
+ for (let y = 25; y >= current.y - 1; y -= 25) {
+   ledgers.innerHTML += `<line x1="${noteX - ledgerWidth}" y1="${y}" x2="${noteX + ledgerWidth}" y2="${y}" stroke="black" stroke-width="2"/>`;
+ }
+}
+
+function checkAns(ans){
+ if(ans === current.name){
+   correct++;
+   document.getElementById("correct").innerText = correct;
+   document.getElementById("result").innerHTML = "✔ Chính xác";
+   document.getElementById("result").className = "good";
+   beep(523);
+ }else{
+   wrong++;
+   document.getElementById("wrong").innerText = wrong;
+   document.getElementById("result").innerHTML = "✘ Đáp án: " + current.name;
+   document.getElementById("result").className = "bad";
+   beep(220);
+ }
+ setTimeout(newQuestion, 700);
+}
+
+newQuestion();
+</script>
+</body>
+</html>
