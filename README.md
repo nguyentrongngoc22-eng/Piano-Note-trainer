@@ -15,9 +15,13 @@ mở `index.html` là dùng được, kể cả offline.
 - **Thống kê nốt hay sai nhất** để biết chỗ cần luyện thêm.
 - **Bật/tắt dòng kẻ phụ** (ledger lines) cho người mới bắt đầu.
 - Nút **Reset điểm** để làm lại từ đầu.
-- **Cài được như ứng dụng (PWA)** trên Android/Chrome: có `manifest.json`,
-  service worker (`sw.js`) precache toàn bộ file tĩnh → **chạy offline** và
-  hiện lời mời "Thêm vào màn hình chính".
+- **Cài được như ứng dụng (PWA)**:
+  - **Android/Chrome**: có `manifest.json` + service worker → hiện lời mời
+    "Thêm vào màn hình chính", chạy offline, mở toàn màn hình.
+  - **iOS/Safari**: mở bằng **Safari** → nút Chia sẻ → **"Thêm vào MH chính"**.
+    Có sẵn thẻ `apple-mobile-web-app-capable` (chạy toàn màn hình) và
+    `apple-touch-icon` 180×180 đặc (icon đẹp, không lộ nền đen). Lưu ý iOS
+    không hỗ trợ banner cài tự động và chỉ cài được từ Safari.
 
 ## ⌨️ Phím tắt
 

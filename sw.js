@@ -1,6 +1,6 @@
 // Service worker cho Note Trainer PWA.
 // Dùng ĐƯỜNG DẪN TƯƠNG ĐỐI (./) để chạy đúng ở mọi subpath GitHub Pages.
-const CACHE = 'note-trainer-v1';
+const CACHE = 'note-trainer-v2';
 
 // Toàn bộ file tĩnh cần precache.
 const ASSETS = [
@@ -10,7 +10,8 @@ const ASSETS = [
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/icon-maskable-192.png',
-  './icons/icon-maskable-512.png'
+  './icons/icon-maskable-512.png',
+  './icons/apple-touch-icon-180.png'
 ];
 
 // Cài đặt: precache tất cả tài nguyên tĩnh.
