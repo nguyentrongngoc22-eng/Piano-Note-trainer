@@ -15,6 +15,9 @@ mở `index.html` là dùng được, kể cả offline.
 - **Thống kê nốt hay sai nhất** để biết chỗ cần luyện thêm.
 - **Bật/tắt dòng kẻ phụ** (ledger lines) cho người mới bắt đầu.
 - Nút **Reset điểm** để làm lại từ đầu.
+- **Cài được như ứng dụng (PWA)** trên Android/Chrome: có `manifest.json`,
+  service worker (`sw.js`) precache toàn bộ file tĩnh → **chạy offline** và
+  hiện lời mời "Thêm vào màn hình chính".
 
 ## ⌨️ Phím tắt
 
@@ -41,7 +44,14 @@ Repo đã kèm sẵn workflow `.github/workflows/deploy.yml`. Để bật:
 ## 📁 Cấu trúc
 
 ```
-index.html   # Toàn bộ app (giao diện + logic)
+index.html                  # Toàn bộ app (giao diện + logic)
+manifest.json               # Khai báo PWA
+sw.js                       # Service worker (precache + offline)
+icons/                      # Icon 192/512 + bản maskable
 README.md
 .github/workflows/deploy.yml
 ```
+
+> **Ghi chú về subpath**: manifest và service worker đều dùng đường dẫn
+> tương đối (`./`), nên app hoạt động đúng ở bất kỳ đường dẫn con nào của
+> GitHub Pages (ví dụ `/<tên-repo>/`) mà không cần chỉnh sửa gì.
