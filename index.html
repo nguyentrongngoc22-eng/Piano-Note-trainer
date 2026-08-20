@@ -3,141 +3,281 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Note Trainer 3.0</title>
+<title>Note Trainer 3.1</title>
 <style>
-body {font-family: Arial, sans-serif; background: #f3f4f6; text-align: center; padding: 10px;}
-.card {background: white; max-width: 700px; margin: auto; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.15);}
-button {padding: 10px 14px; margin: 4px; font-size: 18px; border-radius: 8px; cursor: pointer;}
-button:hover {background-color: #e2e8f0;}
-.good {color: green; font-weight: bold;}
-.bad {color: red; font-weight: bold;}
-select {font-size: 16px; padding: 6px;}
+:root {
+  --bg: #f3f4f6; --card: #ffffff; --text: #1f2937; --muted: #6b7280;
+  --border: #e5e7eb; --btn: #f8fafc; --btn-hover: #e2e8f0;
+  --good: #16a34a; --bad: #dc2626; --accent: #2563eb;
+}
+* { box-sizing: border-box; }
+body { font-family: system-ui, Arial, sans-serif; background: var(--bg); color: var(--text);
+  text-align: center; padding: 10px; margin: 0; }
+.card { background: var(--card); max-width: 720px; margin: auto; padding: 18px;
+  border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,.12); }
+h2 { margin: 4px 0 12px; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; }
+button { padding: 10px 14px; font-size: 18px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--btn); color: var(--text); transition: background .12s; }
+button:hover:not(:disabled) { background: var(--btn-hover); }
+button:disabled { opacity: .5; cursor: not-allowed; }
+button .key { font-size: 12px; color: var(--muted); display: block; }
+select { font-size: 16px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--text); }
+.stats { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; margin: 12px 0; color: var(--muted); font-size: 15px; }
+.stats b { color: var(--text); }
+.answers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; max-width: 440px; margin: 12px auto 0; }
+.answers button { font-size: 18px; }
+.good { color: var(--good); font-weight: bold; }
+.bad { color: var(--bad); font-weight: bold; }
+.result { min-height: 28px; margin: 10px 0 4px; font-size: 20px; }
+.timer { font-weight: bold; color: var(--accent); }
+.small { font-size: 13px; color: var(--muted); }
+.linkbtn { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 13px; text-decoration: underline; padding: 2px; }
+svg { width: 100%; max-width: 500px; }
 </style>
 </head>
 <body>
 <div class="card">
 <h2>🎼 Luyện Nhớ Nốt Nhạc</h2>
 
-<select id="mode" onchange="newQuestion()">
-<option value="treble">Khóa Sol</option>
-<option value="bass">Khóa Fa</option>
-<option value="mix">Sol + Fa</option>
-</select>
-
-<p>✅ Đúng: <span id="correct">0</span> |
-❌ Sai: <span id="wrong">0</span></p>
-
-<svg viewBox="0 -10 420 240" style="width:100%;max-width:500px">
-<line x1="50" y1="50" x2="370" y2="50" stroke="black" stroke-width="2"/>
-<line x1="50" y1="75" x2="370" y2="75" stroke="black" stroke-width="2"/>
-<line x1="50" y1="100" x2="370" y2="100" stroke="black" stroke-width="2"/>
-<line x1="50" y1="125" x2="370" y2="125" stroke="black" stroke-width="2"/>
-<line x1="50" y1="150" x2="370" y2="150" stroke="black" stroke-width="2"/>
-<text id="clef" x="65" y="125" font-size="80">𝄞</text>
-
-<g id="ledgers"></g>
-
-<ellipse id="note" cx="250" cy="100" rx="12" ry="9" fill="black"/>
-</svg>
-
-<div>
-<button onclick="checkAns('Đô')">Đô</button>
-<button onclick="checkAns('Rê')">Rê</button>
-<button onclick="checkAns('Mi')">Mi</button>
-<button onclick="checkAns('Fa')">Fa</button><br>
-<button onclick="checkAns('Son')">Son</button>
-<button onclick="checkAns('La')">La</button>
-<button onclick="checkAns('Si')">Si</button>
+<div class="controls">
+  <select id="mode" onchange="newQuestion()">
+    <option value="treble">Khóa Sol</option>
+    <option value="bass">Khóa Fa</option>
+    <option value="mix">Sol + Fa</option>
+  </select>
+  <label class="small"><input type="checkbox" id="ledgerToggle" checked onchange="newQuestion()"> Dòng kẻ phụ</label>
+  <label class="small"><input type="checkbox" id="soundToggle" checked> Âm thanh</label>
+  <button id="timedBtn" onclick="toggleTimed()">⏱️ Tính giờ 60s</button>
 </div>
 
-<h3 id="result"></h3>
+<div class="stats">
+  <span>✅ Đúng: <b id="correct">0</b></span>
+  <span>❌ Sai: <b id="wrong">0</b></span>
+  <span>🎯 Độ chính xác: <b id="accuracy">—</b></span>
+  <span>🔥 Streak: <b id="streak">0</b></span>
+  <span>🏆 Kỷ lục: <b id="best">0</b></span>
+  <span id="timerWrap" style="display:none">⏱️ <span class="timer" id="timer">60</span>s</span>
+</div>
+
+<svg viewBox="0 -10 420 240">
+  <line x1="50" y1="50" x2="370" y2="50" stroke="currentColor" stroke-width="2"/>
+  <line x1="50" y1="75" x2="370" y2="75" stroke="currentColor" stroke-width="2"/>
+  <line x1="50" y1="100" x2="370" y2="100" stroke="currentColor" stroke-width="2"/>
+  <line x1="50" y1="125" x2="370" y2="125" stroke="currentColor" stroke-width="2"/>
+  <line x1="50" y1="150" x2="370" y2="150" stroke="currentColor" stroke-width="2"/>
+  <text id="clef" x="65" y="125" font-size="80">𝄞</text>
+  <g id="ledgers"></g>
+  <ellipse id="note" cx="250" cy="100" rx="12" ry="9" fill="currentColor"/>
+</svg>
+
+<div class="answers" id="answers">
+  <button data-note="Đô"  onclick="checkAns('Đô')">Đô<span class="key">D / 1</span></button>
+  <button data-note="Rê"  onclick="checkAns('Rê')">Rê<span class="key">R / 2</span></button>
+  <button data-note="Mi"  onclick="checkAns('Mi')">Mi<span class="key">M / 3</span></button>
+  <button data-note="Fa"  onclick="checkAns('Fa')">Fa<span class="key">F / 4</span></button>
+  <button data-note="Son" onclick="checkAns('Son')">Son<span class="key">G / 5</span></button>
+  <button data-note="La"  onclick="checkAns('La')">La<span class="key">L / 6</span></button>
+  <button data-note="Si"  onclick="checkAns('Si')">Si<span class="key">S / 7</span></button>
+</div>
+
+<div class="result" id="result"></div>
+
+<div class="small">
+  Nốt hay sai nhất: <b id="hardest">—</b> ·
+  <button class="linkbtn" onclick="resetStats()">Reset điểm</button>
+</div>
 </div>
 
 <script>
+// name = tên nốt (tiếng Việt), y = vị trí trên khuông, oct = quãng tám (để phát đúng cao độ)
 const treble = [
-  {name:'La', y:25}, {name:'Son', y:37.5}, 
-  {name:'Fa', y:50}, {name:'Mi', y:62.5}, {name:'Rê', y:75}, 
-  {name:'Đô', y:87.5}, {name:'Si', y:100}, {name:'La', y:112.5}, 
-  {name:'Son', y:125}, {name:'Fa', y:137.5}, {name:'Mi', y:150},
-  {name:'Rê', y:162.5}, {name:'Đô', y:175}, {name:'Si', y:187.5}, {name:'La', y:200} 
+  {name:'La', y:25,   oct:5}, {name:'Son', y:37.5, oct:5},
+  {name:'Fa', y:50,   oct:5}, {name:'Mi', y:62.5, oct:5}, {name:'Rê', y:75, oct:5},
+  {name:'Đô', y:87.5, oct:5}, {name:'Si', y:100, oct:4}, {name:'La', y:112.5, oct:4},
+  {name:'Son', y:125, oct:4}, {name:'Fa', y:137.5, oct:4}, {name:'Mi', y:150, oct:4},
+  {name:'Rê', y:162.5, oct:4}, {name:'Đô', y:175, oct:4}, {name:'Si', y:187.5, oct:3}, {name:'La', y:200, oct:3}
 ];
 
 const bass = [
-  {name:'Đô', y:25}, {name:'Si', y:37.5}, 
-  {name:'La', y:50}, {name:'Son', y:62.5}, {name:'Fa', y:75}, 
-  {name:'Mi', y:87.5}, {name:'Rê', y:100}, {name:'Đô', y:112.5}, 
-  {name:'Si', y:125}, {name:'La', y:137.5}, {name:'Son', y:150},
-  {name:'Fa', y:162.5}, {name:'Mi', y:175}, {name:'Rê', y:187.5}, {name:'Đô', y:200} 
+  {name:'Đô', y:25,   oct:4}, {name:'Si', y:37.5, oct:3},
+  {name:'La', y:50,   oct:3}, {name:'Son', y:62.5, oct:3}, {name:'Fa', y:75, oct:3},
+  {name:'Mi', y:87.5, oct:3}, {name:'Rê', y:100, oct:3}, {name:'Đô', y:112.5, oct:3},
+  {name:'Si', y:125, oct:2}, {name:'La', y:137.5, oct:2}, {name:'Son', y:150, oct:2},
+  {name:'Fa', y:162.5, oct:2}, {name:'Mi', y:175, oct:2}, {name:'Rê', y:187.5, oct:2}, {name:'Đô', y:200, oct:2}
 ];
 
-let current;
-let correct = 0;
-let wrong = 0;
+const SEMITONE = { 'Đô':0, 'Rê':2, 'Mi':4, 'Fa':5, 'Son':7, 'La':9, 'Si':11 };
+const KEYMAP = { 'd':'Đô','1':'Đô', 'r':'Rê','2':'Rê', 'm':'Mi','3':'Mi',
+                 'f':'Fa','4':'Fa', 'g':'Son','5':'Son', 'l':'La','6':'La', 's':'Si','7':'Si' };
 
-function beep(freq){
- const ctx = new(window.AudioContext||window.webkitAudioContext)();
- const osc = ctx.createOscillator();
- osc.frequency.value = freq;
- osc.connect(ctx.destination);
- osc.start();
- osc.stop(ctx.currentTime + 0.15);
+// ---- Trạng thái, lưu bằng localStorage ----
+const store = {
+  correct: 0, wrong: 0, best: 0, wrongByNote: {}
+};
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem('noteTrainer') || '{}');
+    Object.assign(store, s);
+  } catch (e) {}
+}
+function save() { localStorage.setItem('noteTrainer', JSON.stringify(store)); }
+
+let current, streak = 0, locked = false;
+let timed = false, timeLeft = 60, timerId = null;
+
+// ---- Âm thanh: DÙNG LẠI một AudioContext duy nhất (tránh rò rỉ) ----
+let audioCtx = null;
+function getCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function freqOf(entry) { // tần số theo cao độ thật của nốt
+  const midi = (entry.oct + 1) * 12 + SEMITONE[entry.name];
+  return 440 * Math.pow(2, (midi - 69) / 12);
+}
+function playTone(freq, dur = 0.35) {
+  if (!document.getElementById('soundToggle').checked) return;
+  const ctx = getCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0.001, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.25, ctx.currentTime + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + dur + 0.02);
 }
 
-function newQuestion(){
- let mode = document.getElementById("mode").value;
- let arr;
-
- if(mode === "treble"){
-   arr = treble;
-   document.getElementById("clef").textContent = "𝄞";
- }else if(mode === "bass"){
-   arr = bass;
-   document.getElementById("clef").textContent = "𝄢";
- }else{
-   if(Math.random() > 0.5){
-      arr = treble;
-      document.getElementById("clef").textContent = "𝄞";
-   }else{
-      arr = bass;
-      document.getElementById("clef").textContent = "𝄢";
-   }
- }
-
- current = arr[Math.floor(Math.random() * arr.length)];
- document.getElementById("note").setAttribute("cy", current.y);
- document.getElementById("result").innerHTML = "";
- 
- let ledgers = document.getElementById("ledgers");
- ledgers.innerHTML = ""; 
- let noteX = 250;
- let ledgerWidth = 22; 
- 
- for (let y = 175; y <= current.y + 1; y += 25) {
-   ledgers.innerHTML += `<line x1="${noteX - ledgerWidth}" y1="${y}" x2="${noteX + ledgerWidth}" y2="${y}" stroke="black" stroke-width="2"/>`;
- }
- 
- for (let y = 25; y >= current.y - 1; y -= 25) {
-   ledgers.innerHTML += `<line x1="${noteX - ledgerWidth}" y1="${y}" x2="${noteX + ledgerWidth}" y2="${y}" stroke="black" stroke-width="2"/>`;
- }
+// ---- Render số liệu ----
+function renderStats() {
+  document.getElementById('correct').innerText = store.correct;
+  document.getElementById('wrong').innerText = store.wrong;
+  document.getElementById('streak').innerText = streak;
+  document.getElementById('best').innerText = store.best;
+  const total = store.correct + store.wrong;
+  document.getElementById('accuracy').innerText =
+    total ? Math.round(store.correct / total * 100) + '%' : '—';
+  let hardest = '—', max = 0;
+  for (const k in store.wrongByNote) {
+    if (store.wrongByNote[k] > max) { max = store.wrongByNote[k]; hardest = k; }
+  }
+  document.getElementById('hardest').innerText = max ? `${hardest} (${max} lần)` : '—';
 }
 
-function checkAns(ans){
- if(ans === current.name){
-   correct++;
-   document.getElementById("correct").innerText = correct;
-   document.getElementById("result").innerHTML = "✔ Chính xác";
-   document.getElementById("result").className = "good";
-   beep(523);
- }else{
-   wrong++;
-   document.getElementById("wrong").innerText = wrong;
-   document.getElementById("result").innerHTML = "✘ Đáp án: " + current.name;
-   document.getElementById("result").className = "bad";
-   beep(220);
- }
- setTimeout(newQuestion, 700);
+function setButtons(disabled) {
+  document.querySelectorAll('#answers button').forEach(b => b.disabled = disabled);
 }
 
+function newQuestion() {
+  locked = false;
+  setButtons(false);
+  const mode = document.getElementById('mode').value;
+  let arr, clef;
+  if (mode === 'treble') { arr = treble; clef = '𝄞'; }
+  else if (mode === 'bass') { arr = bass; clef = '𝄢'; }
+  else if (Math.random() > 0.5) { arr = treble; clef = '𝄞'; }
+  else { arr = bass; clef = '𝄢'; }
+
+  document.getElementById('clef').textContent = clef;
+  current = arr[Math.floor(Math.random() * arr.length)];
+  document.getElementById('note').setAttribute('cy', current.y);
+  document.getElementById('result').innerHTML = '';
+
+  const ledgers = document.getElementById('ledgers');
+  ledgers.innerHTML = '';
+  if (document.getElementById('ledgerToggle').checked) {
+    const noteX = 250, w = 22;
+    for (let y = 175; y <= current.y + 1; y += 25)
+      ledgers.innerHTML += `<line x1="${noteX-w}" y1="${y}" x2="${noteX+w}" y2="${y}" stroke="currentColor" stroke-width="2"/>`;
+    for (let y = 25; y >= current.y - 1; y -= 25)
+      ledgers.innerHTML += `<line x1="${noteX-w}" y1="${y}" x2="${noteX+w}" y2="${y}" stroke="currentColor" stroke-width="2"/>`;
+  }
+}
+
+function checkAns(ans) {
+  if (locked || !current) return;
+  if (timed && timeLeft <= 0) return;
+  locked = true;
+  setButtons(true);
+
+  const res = document.getElementById('result');
+  if (ans === current.name) {
+    store.correct++;
+    streak++;
+    if (streak > store.best) store.best = streak;
+    res.innerHTML = '✔ Chính xác';
+    res.className = 'result good';
+    playTone(freqOf(current)); // phát đúng cao độ nốt
+  } else {
+    store.wrong++;
+    streak = 0;
+    store.wrongByNote[current.name] = (store.wrongByNote[current.name] || 0) + 1;
+    res.innerHTML = '✘ Đáp án: ' + current.name;
+    res.className = 'result bad';
+    playTone(196, 0.3); // âm báo sai
+  }
+  save();
+  renderStats();
+  setTimeout(newQuestion, 700);
+}
+
+// ---- Chế độ tính giờ ----
+function toggleTimed() {
+  timed ? stopTimed() : startTimed();
+}
+function startTimed() {
+  timed = true;
+  timeLeft = 60;
+  document.getElementById('timerWrap').style.display = '';
+  document.getElementById('timedBtn').innerText = '⏹️ Dừng';
+  document.getElementById('timer').innerText = timeLeft;
+  const before = { c: store.correct, w: store.wrong };
+  timerId = setInterval(() => {
+    timeLeft--;
+    document.getElementById('timer').innerText = timeLeft;
+    if (timeLeft <= 0) {
+      clearInterval(timerId);
+      const gained = store.correct - before.c;
+      const missed = store.wrong - before.w;
+      setButtons(true);
+      locked = true;
+      document.getElementById('result').innerHTML =
+        `⏱️ Hết giờ! Lượt này: <span class="good">${gained} đúng</span> / <span class="bad">${missed} sai</span>`;
+      document.getElementById('result').className = 'result';
+      timed = false;
+      document.getElementById('timedBtn').innerText = '⏱️ Tính giờ 60s';
+    }
+  }, 1000);
+  newQuestion();
+}
+function stopTimed() {
+  timed = false;
+  clearInterval(timerId);
+  document.getElementById('timerWrap').style.display = 'none';
+  document.getElementById('timedBtn').innerText = '⏱️ Tính giờ 60s';
+}
+
+function resetStats() {
+  if (!confirm('Xóa toàn bộ điểm và thống kê?')) return;
+  store.correct = 0; store.wrong = 0; store.best = 0; store.wrongByNote = {};
+  streak = 0;
+  save();
+  renderStats();
+}
+
+// ---- Bàn phím ----
+document.addEventListener('keydown', (e) => {
+  const note = KEYMAP[e.key.toLowerCase()];
+  if (note) { e.preventDefault(); checkAns(note); }
+});
+
+// ---- Khởi động ----
+load();
+renderStats();
 newQuestion();
 </script>
 </body>
