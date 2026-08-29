@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Note Trainer 3.1</title>
+<title>Note Trainer 3.2</title>
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#2563eb">
 <link rel="icon" href="./icons/icon-192.png">
@@ -38,6 +38,20 @@ select { font-size: 16px; padding: 6px 8px; border-radius: 8px; border: 1px soli
 .small { font-size: 13px; color: var(--muted); }
 .linkbtn { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 13px; text-decoration: underline; padding: 2px; }
 svg { width: 100%; max-width: 500px; }
+
+/* ---- Chế độ chơi theo bài ---- */
+#songPanel { display: none; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; margin-top: 10px; }
+#pitchReadout { min-width: 150px; text-align: center; font-variant-numeric: tabular-nums; }
+#micBtn.on { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }
+#songNotes { transition: transform .25s ease; }
+#songNotes .snote ellipse { fill: var(--text); opacity: .85; }
+#songNotes .snote.done ellipse { fill: var(--good); opacity: 1; }
+#songNotes .snote.active ellipse { fill: var(--accent); opacity: 1; }
+#songNotes .snote.upcoming ellipse { opacity: .4; }
+#songNotes .snote-label { fill: var(--muted); }
+#songNotes .snote.active .snote-label { fill: var(--accent); font-weight: bold; }
+#songNotes .snote.done .snote-label { fill: var(--good); }
+#playLine { display: none; }
 </style>
 </head>
 <body>
@@ -45,17 +59,25 @@ svg { width: 100%; max-width: 500px; }
 <h2>🎼 Luyện Nhớ Nốt Nhạc</h2>
 
 <div class="controls">
-  <select id="mode" onchange="newQuestion()">
+  <select id="mode" onchange="onModeChange()">
     <option value="treble">Khóa Sol</option>
     <option value="bass">Khóa Fa</option>
     <option value="mix">Sol + Fa</option>
+    <option value="song">Chơi theo bài 🎤</option>
   </select>
-  <label class="small"><input type="checkbox" id="ledgerToggle" checked onchange="newQuestion()"> Dòng kẻ phụ</label>
-  <label class="small"><input type="checkbox" id="soundToggle" checked> Âm thanh</label>
+  <label class="small" id="ledgerLabel"><input type="checkbox" id="ledgerToggle" checked onchange="newQuestion()"> Dòng kẻ phụ</label>
+  <label class="small" id="soundLabel"><input type="checkbox" id="soundToggle" checked> Âm thanh</label>
   <button id="timedBtn" onclick="toggleTimed()">⏱️ Tính giờ 60s</button>
 </div>
 
-<div class="stats">
+<div id="songPanel">
+  <select id="songSelect" onchange="loadSong()"></select>
+  <button id="micBtn" onclick="toggleMic()">🎤 Bật micro</button>
+  <button onclick="loadSong()">↺ Chơi lại</button>
+  <span id="pitchReadout" class="small">Nghe: —</span>
+</div>
+
+<div class="stats" id="statsBar">
   <span>✅ Đúng: <b id="correct">0</b></span>
   <span>❌ Sai: <b id="wrong">0</b></span>
   <span>🎯 Độ chính xác: <b id="accuracy">—</b></span>
@@ -73,6 +95,8 @@ svg { width: 100%; max-width: 500px; }
   <text id="clef" x="65" y="125" font-size="80">𝄞</text>
   <g id="ledgers"></g>
   <ellipse id="note" cx="250" cy="100" rx="12" ry="9" fill="currentColor"/>
+  <g id="songNotes"></g>
+  <line id="playLine" x1="140" y1="30" x2="140" y2="215" stroke="var(--accent)" stroke-width="2" stroke-dasharray="4 3" opacity="0.7"/>
 </svg>
 
 <div class="answers" id="answers">
@@ -87,7 +111,7 @@ svg { width: 100%; max-width: 500px; }
 
 <div class="result" id="result"></div>
 
-<div class="small">
+<div class="small" id="hardestBar">
   Nốt hay sai nhất: <b id="hardest">—</b> ·
   <button class="linkbtn" onclick="resetStats()">Reset điểm</button>
 </div>
@@ -112,6 +136,10 @@ const bass = [
 ];
 
 const SEMITONE = { 'Đô':0, 'Rê':2, 'Mi':4, 'Fa':5, 'Son':7, 'La':9, 'Si':11 };
+// chỉ số bậc âm (diatonic) để tính vị trí y trên khuông
+const DIA = { 'Đô':0, 'Rê':1, 'Mi':2, 'Fa':3, 'Son':4, 'La':5, 'Si':6 };
+// đảo ngược: pitch-class semitone -> tên nốt tự nhiên
+const PC_NAME = { 0:'Đô', 2:'Rê', 4:'Mi', 5:'Fa', 7:'Son', 9:'La', 11:'Si' };
 const KEYMAP = { 'd':'Đô','1':'Đô', 'r':'Rê','2':'Rê', 'm':'Mi','3':'Mi',
                  'f':'Fa','4':'Fa', 'g':'Son','5':'Son', 'l':'La','6':'La', 's':'Si','7':'Si' };
 
@@ -180,6 +208,7 @@ function newQuestion() {
   locked = false;
   setButtons(false);
   const mode = document.getElementById('mode').value;
+  if (mode === 'song') return; // chế độ chơi bài không dùng câu hỏi trắc nghiệm
   let arr, clef;
   if (mode === 'treble') { arr = treble; clef = '𝄞'; }
   else if (mode === 'bass') { arr = bass; clef = '𝄢'; }
@@ -205,6 +234,7 @@ function newQuestion() {
 function checkAns(ans) {
   if (locked || !current) return;
   if (timed && timeLeft <= 0) return;
+  if (document.getElementById('mode').value === 'song') return;
   locked = true;
   setButtons(true);
 
@@ -273,8 +303,254 @@ function resetStats() {
   renderStats();
 }
 
+// ======================================================================
+// ===============  CHẾ ĐỘ CHƠI THEO BÀI (micro + nốt chạy)  =============
+// ======================================================================
+
+// Mỗi bài là danh sách [tênNốt, quãngTám]. Dùng khóa Sol.
+const SONGS = {
+  scaleC: { name: 'Thang âm Đô trưởng (đi lên & xuống)', notes: [
+    ['Đô',4],['Rê',4],['Mi',4],['Fa',4],['Son',4],['La',4],['Si',4],['Đô',5],
+    ['Si',4],['La',4],['Son',4],['Fa',4],['Mi',4],['Rê',4],['Đô',4]
+  ]},
+  twinkle: { name: 'Twinkle Twinkle Little Star', notes: [
+    ['Đô',4],['Đô',4],['Son',4],['Son',4],['La',4],['La',4],['Son',4],
+    ['Fa',4],['Fa',4],['Mi',4],['Mi',4],['Rê',4],['Rê',4],['Đô',4]
+  ]},
+  mary: { name: 'Mary Had a Little Lamb', notes: [
+    ['Mi',4],['Rê',4],['Đô',4],['Rê',4],['Mi',4],['Mi',4],['Mi',4],
+    ['Rê',4],['Rê',4],['Rê',4],['Mi',4],['Son',4],['Son',4]
+  ]},
+  ode: { name: 'Ode to Joy (Beethoven)', notes: [
+    ['Mi',4],['Mi',4],['Fa',4],['Son',4],['Son',4],['Fa',4],['Mi',4],['Rê',4],
+    ['Đô',4],['Đô',4],['Rê',4],['Mi',4],['Mi',4],['Rê',4],['Rê',4]
+  ]}
+};
+
+const SONG_START_X = 140, SONG_SPACING = 66;
+let curSong = null, songIndex = 0;
+
+function midiToNote(midi) {
+  const pc = ((midi % 12) + 12) % 12;
+  const oct = Math.floor(midi / 12) - 1;
+  const name = PC_NAME[pc] || (PC_NAME[pc - 1] + '#');
+  return { name, oct, midi };
+}
+function yForTreble(name, oct) { // y = 525 - 12.5 * (oct*7 + bậc âm)
+  return 525 - 12.5 * (oct * 7 + DIA[name]);
+}
+
+function fillSongSelect() {
+  const sel = document.getElementById('songSelect');
+  sel.innerHTML = '';
+  for (const key in SONGS) {
+    const o = document.createElement('option');
+    o.value = key; o.textContent = SONGS[key].name;
+    sel.appendChild(o);
+  }
+}
+
+function loadSong() {
+  curSong = SONGS[document.getElementById('songSelect').value];
+  songIndex = 0;
+  buildSongNotes();
+  scrollSong(true);
+  const done = curSong.notes.length;
+  document.getElementById('result').className = 'result';
+  document.getElementById('result').innerHTML =
+    `Bài <b>${done}</b> nốt · Bật micro rồi đánh nốt <b>${curSong.notes[0][0]}</b> trên đàn để bắt đầu.`;
+}
+
+function buildSongNotes() {
+  const g = document.getElementById('songNotes');
+  let html = '';
+  curSong.notes.forEach(([name, oct], i) => {
+    const x = SONG_START_X + i * SONG_SPACING;
+    const y = yForTreble(name, oct);
+    let led = '';
+    for (let ly = 175; ly <= y + 0.1; ly += 25)
+      led += `<line x1="${x-16}" y1="${ly}" x2="${x+16}" y2="${ly}" stroke="currentColor" stroke-width="2"/>`;
+    for (let ly = 25; ly >= y - 0.1; ly -= 25)
+      led += `<line x1="${x-16}" y1="${ly}" x2="${x+16}" y2="${ly}" stroke="currentColor" stroke-width="2"/>`;
+    html += `<g class="snote" data-i="${i}">${led}` +
+            `<ellipse cx="${x}" cy="${y}" rx="11" ry="8"/>` +
+            `<text class="snote-label" x="${x}" y="222" text-anchor="middle" font-size="12">${name}</text></g>`;
+  });
+  g.innerHTML = html;
+  colorSongNotes();
+}
+
+function colorSongNotes() {
+  document.querySelectorAll('#songNotes .snote').forEach(el => {
+    const i = +el.dataset.i;
+    el.classList.remove('done', 'active', 'upcoming');
+    if (i < songIndex) el.classList.add('done');
+    else if (i === songIndex) el.classList.add('active');
+    else el.classList.add('upcoming');
+  });
+}
+
+function scrollSong(instant) {
+  const g = document.getElementById('songNotes');
+  g.style.transition = instant ? 'none' : 'transform .25s ease';
+  g.style.transform = `translateX(${-songIndex * SONG_SPACING}px)`;
+  colorSongNotes();
+  if (instant) requestAnimationFrame(() => { g.style.transition = 'transform .25s ease'; });
+}
+
+function songAdvance() {
+  songIndex++;
+  scrollSong(false);
+  if (songIndex >= curSong.notes.length) {
+    document.getElementById('result').className = 'result good';
+    document.getElementById('result').innerHTML = '🎉 Hoàn thành bài! Bấm "↺ Chơi lại" để tập lại.';
+  } else {
+    const nx = curSong.notes[songIndex][0];
+    document.getElementById('result').className = 'result';
+    document.getElementById('result').innerHTML = `Nốt tiếp theo: <b class="good">${nx}</b>`;
+  }
+}
+
+// ---- Micro: nhận cao độ bằng autocorrelation ----
+let micStream = null, micAnalyser = null, micBuf = null, micRAF = null, micRunning = false;
+let lastMidi = null, stableCount = 0, awaitingRelease = false, acceptedMidi = null;
+
+async function toggleMic() {
+  if (micRunning) { stopMic(); return; }
+  if (document.getElementById('mode').value !== 'song') return;
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+    });
+    const ctx = getCtx();
+    const src = ctx.createMediaStreamSource(micStream);
+    micAnalyser = ctx.createAnalyser();
+    micAnalyser.fftSize = 2048;
+    src.connect(micAnalyser);
+    micBuf = new Float32Array(micAnalyser.fftSize);
+    micRunning = true;
+    const btn = document.getElementById('micBtn');
+    btn.textContent = '⏹️ Tắt micro';
+    btn.classList.add('on');
+    lastMidi = null; stableCount = 0; awaitingRelease = false;
+    detectLoop();
+  } catch (e) {
+    alert('Không truy cập được micro. Hãy cho phép quyền micro và dùng Chrome/Edge.\n\n' + e.message);
+  }
+}
+
+function stopMic() {
+  micRunning = false;
+  if (micRAF) cancelAnimationFrame(micRAF);
+  if (micStream) micStream.getTracks().forEach(t => t.stop());
+  micStream = null; micAnalyser = null;
+  const btn = document.getElementById('micBtn');
+  btn.textContent = '🎤 Bật micro';
+  btn.classList.remove('on');
+  document.getElementById('pitchReadout').textContent = 'Nghe: —';
+}
+
+function detectLoop() {
+  if (!micRunning) return;
+  micAnalyser.getFloatTimeDomainData(micBuf);
+  const freq = autoCorrelate(micBuf, getCtx().sampleRate);
+  const readout = document.getElementById('pitchReadout');
+
+  if (freq > 0) {
+    const midi = Math.round(69 + 12 * Math.log2(freq / 440));
+    const n = midiToNote(midi);
+    readout.textContent = `Nghe: ${n.name}${n.oct} (${Math.round(freq)} Hz)`;
+
+    if (midi === lastMidi) stableCount++;
+    else { lastMidi = midi; stableCount = 1; }
+
+    if (awaitingRelease && midi !== acceptedMidi) awaitingRelease = false;
+    if (!awaitingRelease && stableCount >= 3) tryMatch(midi);
+  } else {
+    readout.textContent = 'Nghe: —';
+    awaitingRelease = false; lastMidi = null; stableCount = 0;
+  }
+  micRAF = requestAnimationFrame(detectLoop);
+}
+
+function tryMatch(detMidi) {
+  if (!curSong || songIndex >= curSong.notes.length) return;
+  const [name, oct] = curSong.notes[songIndex];
+  const targetMidi = (oct + 1) * 12 + SEMITONE[name];
+  const diff = detMidi - targetMidi;
+  // đúng nếu cùng tên nốt (pitch-class) và lệch tối đa 1 quãng tám (bù lỗi hài âm của micro)
+  if (diff % 12 === 0 && Math.abs(diff) <= 12) {
+    acceptedMidi = detMidi;
+    awaitingRelease = true;
+    stableCount = 0; lastMidi = null;
+    songAdvance();
+  }
+}
+
+// Autocorrelation: trả về tần số cơ bản (Hz) hoặc -1 nếu không rõ.
+function autoCorrelate(buf, sampleRate) {
+  let SIZE = buf.length;
+  let rms = 0;
+  for (let i = 0; i < SIZE; i++) rms += buf[i] * buf[i];
+  rms = Math.sqrt(rms / SIZE);
+  if (rms < 0.01) return -1; // quá nhỏ / im lặng
+
+  let r1 = 0, r2 = SIZE - 1, thres = 0.2;
+  for (let i = 0; i < SIZE / 2; i++) if (Math.abs(buf[i]) < thres) { r1 = i; break; }
+  for (let i = 1; i < SIZE / 2; i++) if (Math.abs(buf[SIZE - i]) < thres) { r2 = SIZE - i; break; }
+  const b = buf.slice(r1, r2);
+  SIZE = b.length;
+  if (SIZE < 8) return -1;
+
+  const c = new Array(SIZE).fill(0);
+  for (let i = 0; i < SIZE; i++)
+    for (let j = 0; j < SIZE - i; j++) c[i] += b[j] * b[j + i];
+
+  let d = 0; while (d < SIZE - 1 && c[d] > c[d + 1]) d++;
+  let maxval = -1, maxpos = -1;
+  for (let i = d; i < SIZE; i++) if (c[i] > maxval) { maxval = c[i]; maxpos = i; }
+  let T0 = maxpos;
+  if (T0 <= 0) return -1;
+
+  // nội suy parabol cho chính xác hơn
+  const x1 = c[T0 - 1] || 0, x2 = c[T0], x3 = c[T0 + 1] || 0;
+  const a = (x1 + x3 - 2 * x2) / 2, bb = (x3 - x1) / 2;
+  if (a) T0 = T0 - bb / (2 * a);
+  const f = sampleRate / T0;
+  if (f < 60 || f > 2000) return -1; // ngoài dải piano hợp lý
+  return f;
+}
+
+// ---- Chuyển đổi giao diện theo chế độ ----
+function onModeChange() {
+  const song = document.getElementById('mode').value === 'song';
+  document.getElementById('songPanel').style.display = song ? 'flex' : 'none';
+  document.getElementById('answers').style.display = song ? 'none' : 'grid';
+  document.getElementById('note').style.display = song ? 'none' : '';
+  document.getElementById('ledgers').style.display = song ? 'none' : '';
+  document.getElementById('songNotes').style.display = song ? '' : 'none';
+  document.getElementById('playLine').style.display = song ? '' : 'none';
+  document.getElementById('timedBtn').style.display = song ? 'none' : '';
+  document.getElementById('ledgerLabel').style.display = song ? 'none' : '';
+  document.getElementById('soundLabel').style.display = song ? 'none' : '';
+  document.getElementById('statsBar').style.display = song ? 'none' : 'flex';
+  document.getElementById('hardestBar').style.display = song ? 'none' : '';
+
+  if (song) {
+    if (timed) stopTimed();
+    document.getElementById('clef').textContent = '𝄞';
+    loadSong();
+  } else {
+    stopMic();
+    document.getElementById('result').innerHTML = '';
+    document.getElementById('result').className = 'result';
+    newQuestion();
+  }
+}
+
 // ---- Bàn phím ----
 document.addEventListener('keydown', (e) => {
+  if (document.getElementById('mode').value === 'song') return;
   const note = KEYMAP[e.key.toLowerCase()];
   if (note) { e.preventDefault(); checkAns(note); }
 });
@@ -282,6 +558,7 @@ document.addEventListener('keydown', (e) => {
 // ---- Khởi động ----
 load();
 renderStats();
+fillSongSelect();
 newQuestion();
 
 // ---- Đăng ký service worker (PWA) ----

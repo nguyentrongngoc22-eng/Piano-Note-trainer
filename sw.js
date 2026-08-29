@@ -1,6 +1,6 @@
 // Service worker cho Note Trainer PWA.
 // Dùng ĐƯỜNG DẪN TƯƠNG ĐỐI (./) để chạy đúng ở mọi subpath GitHub Pages.
-const CACHE = 'note-trainer-v1';
+const CACHE = 'note-trainer-v2';
 
 // Toàn bộ file tĩnh cần precache.
 const ASSETS = [
