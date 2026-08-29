@@ -6,7 +6,12 @@ mở `index.html` là dùng được, kể cả offline.
 
 ## ✨ Tính năng
 
-- **3 chế độ**: Khóa Sol, Khóa Fa, hoặc trộn cả hai.
+- **4 chế độ**: Khóa Sol, Khóa Fa, trộn cả hai, hoặc **Chơi theo bài 🎤**.
+- **Chơi theo bài trên đàn piano thật (acoustic)** — các nốt của một bản nhạc
+  chạy trên khuông tới vạch chơi; bật micro, đánh đúng nốt trên đàn thì nốt
+  chuyển xanh và bài chạy tiếp. Nhận cao độ bằng autocorrelation trong trình
+  duyệt (không cần thiết bị MIDI). Có sẵn: thang âm Đô trưởng, Twinkle Twinkle,
+  Mary Had a Little Lamb, Ode to Joy. **Cần Chrome/Edge và quyền micro.**
 - **Phát đúng cao độ nốt** — nghe được nốt vừa đọc (Web Audio API), gắn tai với mắt.
 - **Bàn phím**: `D R M F G L S` hoặc số `1–7` để trả lời nhanh, không cần chuột.
 - **Lưu tiến độ** bằng `localStorage`: số đúng/sai, độ chính xác, chuỗi đúng
